@@ -32,6 +32,7 @@ export const api = {
   createTask: (projectId: string, data: unknown) => apiRequest(`/projects/${projectId}/tasks`, { method: 'POST', body: JSON.stringify(data) }),
   task: (id: string) => apiRequest(`/tasks/${id}`),
   updateTask: (id: string, data: unknown) => apiRequest(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  createManualTimeEntry: (taskId: string, data: unknown) => apiRequest(`/tasks/${taskId}/time-entries`, { method: 'POST', body: JSON.stringify(data) }),
   reviewTask: (id: string) => apiRequest(`/tasks/${id}/review`, { method: 'POST' }),
   completeTask: (id: string) => apiRequest(`/tasks/${id}/complete`, { method: 'POST' }),
   reopenTask: (id: string, note: string) => apiRequest(`/tasks/${id}/reopen`, { method: 'POST', body: JSON.stringify({ note }) }),

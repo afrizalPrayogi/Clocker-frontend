@@ -24,6 +24,7 @@ Karena frontend langsung memanggil backend, `NEXT_PUBLIC_OWNER_API_KEY` akan ter
 - Projects list dengan filter status dan search.
 - Project detail dengan task board, complete/archive project, dan create/edit task.
 - Task detail dengan start/stop timer, review, complete, reopen, time entries, dan activity trail.
+- Manual time entry untuk mencatat sesi lama dengan tanggal/jam custom.
 - Reports dengan filter date-range, project, task, dan revision.
 
 Tidak ada fitur team, assignment, approval eksternal, billing, export, atau manual time entry karena tidak ada di scope MVP/backend.
