@@ -118,7 +118,7 @@ button.project-card { width: 100%; }
 .project-list-row { display: grid; grid-template-columns: minmax(220px, 1.4fr) .8fr .75fr .7fr auto; align-items: center; gap: 16px; min-height: 88px; padding: 16px 20px; border-bottom: 1px solid #ebe6dc; }
 .project-list-row:last-child, .task-row:last-child { border-bottom: 0; }
 .project-list-row:hover, .task-row:hover { background: #faf7ef; }
-.project-list-title { min-width: 0; }
+.project-list-title { min-width: 0; justify-self: start; text-align: left; }
 .project-list-title strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .84rem; }
 .project-list-title small, .task-title small { display: block; margin-top: 4px; color: var(--ink-soft); font-size: .7rem; }
 .project-list-stat { color: var(--ink-soft); font-size: .75rem; }
