@@ -1,6 +1,7 @@
 export type ProjectType = 'PROJECT' | 'REQUEST';
 export type ProjectStatus = 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
 export type TaskStatus = 'TO_DO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE';
+export type TimeEntryStatus = 'ACTIVE' | 'VOIDED';
 
 export type Project = {
   id: string;
@@ -39,7 +40,10 @@ export type TimeEntry = {
   endedAt: string | null;
   durationSeconds: number | null;
   revisionNumber: number;
+  status: TimeEntryStatus;
   description: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
   createdAt: string;
   task?: Task & { project: Project };
 };
@@ -47,7 +51,7 @@ export type TimeEntry = {
 export type TaskActivity = {
   id: string;
   taskId: string;
-  type: 'STATUS_CHANGED' | 'REOPENED' | 'REVISION_NOTE' | 'TASK_CREATED';
+  type: 'STATUS_CHANGED' | 'REOPENED' | 'REVISION_NOTE' | 'TASK_CREATED' | 'TIME_ENTRY_CREATED' | 'TIME_ENTRY_UPDATED' | 'TIME_ENTRY_DELETED';
   fromStatus: TaskStatus | null;
   toStatus: TaskStatus | null;
   revisionNumber: number | null;

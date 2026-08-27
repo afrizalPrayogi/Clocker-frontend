@@ -162,6 +162,10 @@ button.project-card { width: 100%; }
 .entry-row strong { display: block; font-size: .75rem; }
 .entry-row small { display: block; margin-top: 3px; color: var(--ink-soft); font-size: .67rem; }
 .entry-duration { font-size: .8rem; font-weight: 850; font-variant-numeric: tabular-nums; }
+.entry-row.voided { opacity: .68; background: #f1eee7; }
+.entry-actions { display: flex; align-items: center; gap: 8px; }
+.entry-preview { padding: 11px 12px; border: 1px solid rgba(119, 184, 109, .25); border-radius: 10px; background: rgba(119, 184, 109, .1); color: #315f34; font-size: .76rem; font-weight: 800; }
+.warning-list { display: grid; gap: 6px; padding: 11px 12px; border: 1px solid rgba(244, 211, 107, .7); border-radius: 10px; background: #fff7df; color: #66572d; font-size: .74rem; }
 .timeline-item { position: relative; display: grid; grid-template-columns: 28px 1fr; gap: 12px; padding-bottom: 20px; }
 .timeline-dot { position: relative; z-index: 1; width: 15px; height: 15px; margin-top: 2px; border: 3px solid var(--paper); border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
 .timeline-dot.lime { background: var(--acid); box-shadow: 0 0 0 1px #a3be28; }
