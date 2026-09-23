@@ -51,6 +51,7 @@ export default function Home() {
   const [notificationPermission, setNotificationPermission] = useState<TimerNotificationPermission>('default');
   const [reportFilters, setReportFilters] = useState({ startDate: todayIsoDate(), endDate: todayIsoDate(), projectId: '', taskId: '', revisionNumber: '' });
   const timerNotificationRef = useRef<Notification | null>(null);
+  const serviceWorkerRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const activeTimer = dashboard?.activeTimer ?? null;
 
   useEffect(() => {
@@ -71,6 +72,15 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    void navigator.serviceWorker.register('/clocker-sw.js').then((registration) => {
+      serviceWorkerRegistrationRef.current = registration;
+    }).catch(() => {
+      serviceWorkerRegistrationRef.current = null;
+    });
+  }, []);
+
+  useEffect(() => {
     if (!activeTimer || notificationPermission !== 'granted') {
       timerNotificationRef.current?.close();
       timerNotificationRef.current = null;
@@ -78,7 +88,7 @@ export default function Home() {
     }
 
     function notifyWhenHidden() {
-      if (document.visibilityState === 'hidden') showTimerNotification(activeTimer);
+      if (document.visibilityState === 'hidden') void showTimerNotification(activeTimer);
     }
 
     document.addEventListener('visibilitychange', notifyWhenHidden);
@@ -157,26 +167,44 @@ export default function Home() {
     setNotificationPermission(permission);
     if (permission === 'granted') {
       setToast('Notifikasi timer aktif saat app ditinggal.');
-      showTimerNotification(activeTimer);
+      await showTimerNotification(activeTimer);
     } else if (permission === 'denied') {
       setToast('Notifikasi diblokir. Aktifkan dari browser settings.');
     }
   }
 
-  function showTimerNotification(timer: DashboardReport['activeTimer']) {
+  async function showTimerNotification(timer: DashboardReport['activeTimer']) {
     if (!timer || !('Notification' in window) || Notification.permission !== 'granted') return;
 
     timerNotificationRef.current?.close();
-    const notification = new Notification('Clocker timer masih berjalan', {
+    const options: NotificationOptions = {
       body: `${timer.task.title} / ${timer.task.project.name} / ${revisionLabel(timer.revisionNumber)}`,
       tag: 'clocker-active-timer',
       requireInteraction: true,
-    });
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
+      data: { url: window.location.href },
     };
-    timerNotificationRef.current = notification;
+
+    try {
+      const registration = serviceWorkerRegistrationRef.current ?? ('serviceWorker' in navigator ? await navigator.serviceWorker.ready : null);
+      if (registration) {
+        serviceWorkerRegistrationRef.current = registration;
+        await registration.showNotification('Clocker timer masih berjalan', options);
+        return;
+      }
+    } catch {
+      serviceWorkerRegistrationRef.current = null;
+    }
+
+    try {
+      const notification = new Notification('Clocker timer masih berjalan', options);
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+      timerNotificationRef.current = notification;
+    } catch {
+      setToast('Notifikasi belum didukung di browser ini.');
+    }
   }
 
   function openProject(project: Project) {
