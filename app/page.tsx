@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { formatDate, formatDateTime, formatDuration, liveSeconds, revisionLabel, todayIsoDate } from '@/lib/format';
 import type { DashboardReport, Project, ProjectStatus, ProjectType, Screen, Task, TaskActivity, TaskStatus, TimeEntry, TimeReport } from '@/lib/types';
@@ -17,6 +17,8 @@ type Modal =
   | { type: 'blockedProject'; project: Project; unfinished: Task[] }
   | { type: 'switchTimer'; nextTask: Task }
   | null;
+
+type TimerNotificationPermission = NotificationPermission | 'unsupported';
 
 const statusMeta: Record<TaskStatus, { label: string; className: string }> = {
   TO_DO: { label: 'To do', className: 'todo' },
@@ -46,7 +48,10 @@ export default function Home() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
+  const [notificationPermission, setNotificationPermission] = useState<TimerNotificationPermission>('default');
   const [reportFilters, setReportFilters] = useState({ startDate: todayIsoDate(), endDate: todayIsoDate(), projectId: '', taskId: '', revisionNumber: '' });
+  const timerNotificationRef = useRef<Notification | null>(null);
+  const activeTimer = dashboard?.activeTimer ?? null;
 
   useEffect(() => {
     void refreshAll();
@@ -56,6 +61,30 @@ export default function Home() {
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!('Notification' in window)) {
+      setNotificationPermission('unsupported');
+      return;
+    }
+    setNotificationPermission(Notification.permission);
+  }, []);
+
+  useEffect(() => {
+    if (!activeTimer || notificationPermission !== 'granted') {
+      timerNotificationRef.current?.close();
+      timerNotificationRef.current = null;
+      return;
+    }
+
+    function notifyWhenHidden() {
+      if (document.visibilityState === 'hidden') showTimerNotification(activeTimer);
+    }
+
+    document.addEventListener('visibilitychange', notifyWhenHidden);
+    notifyWhenHidden();
+    return () => document.removeEventListener('visibilitychange', notifyWhenHidden);
+  }, [activeTimer, notificationPermission]);
 
   useEffect(() => {
     if (!toast) return;
@@ -117,6 +146,39 @@ export default function Home() {
     }
   }
 
+  async function requestTimerNotificationPermission() {
+    if (!('Notification' in window)) {
+      setNotificationPermission('unsupported');
+      setToast('Browser ini belum mendukung notifikasi.');
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+    if (permission === 'granted') {
+      setToast('Notifikasi timer aktif saat app ditinggal.');
+      showTimerNotification(activeTimer);
+    } else if (permission === 'denied') {
+      setToast('Notifikasi diblokir. Aktifkan dari browser settings.');
+    }
+  }
+
+  function showTimerNotification(timer: DashboardReport['activeTimer']) {
+    if (!timer || !('Notification' in window) || Notification.permission !== 'granted') return;
+
+    timerNotificationRef.current?.close();
+    const notification = new Notification('Clocker timer masih berjalan', {
+      body: `${timer.task.title} / ${timer.task.project.name} / ${revisionLabel(timer.revisionNumber)}`,
+      tag: 'clocker-active-timer',
+      requireInteraction: true,
+    });
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+    timerNotificationRef.current = notification;
+  }
+
   function openProject(project: Project) {
     setScreen('project-detail');
     setTaskFilter('ALL');
@@ -160,7 +222,6 @@ export default function Home() {
     }, 'Project ditandai Completed.');
   }
 
-  const activeTimer = dashboard?.activeTimer ?? null;
   const activeSeconds = activeTimer ? liveSeconds(activeTimer.startedAt, now) : 0;
   const activeProjects = projects.filter((project) => project.status === 'ACTIVE');
   const projectTasks = selectedProject?.tasks || [];
@@ -210,6 +271,8 @@ export default function Home() {
         <span className="pulse" aria-hidden="true" />
         <div className="global-copy"><strong>{activeTimer.task.title}</strong><small>{activeTimer.task.project.name} / {revisionLabel(activeTimer.revisionNumber)}</small></div>
         <span className="global-value">{formatDuration(activeSeconds, true)}</span>
+        {notificationPermission === 'default' && <button className="btn btn-outline btn-sm btn-notify" onClick={() => void requestTimerNotificationPermission()}>Enable notif</button>}
+        {notificationPermission === 'denied' && <span className="notify-muted">Notif blocked</span>}
         <button className="btn btn-acid" onClick={() => void stopTimer()}>Stop</button>
       </div>}
       <div className={`toast ${toast ? 'show' : ''}`} role="status" aria-live="polite">{toast}</div>
