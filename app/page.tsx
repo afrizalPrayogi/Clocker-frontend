@@ -20,6 +20,15 @@ type Modal =
 
 type TimerNotificationPermission = NotificationPermission | 'unsupported';
 
+type TimerNotificationOptions = NotificationOptions & {
+  actions?: Array<{ action: string; title: string; icon?: string }>;
+  timestamp?: number;
+  vibrate?: number[];
+};
+
+const publicApiUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+const publicOwnerApiKey = process.env.NEXT_PUBLIC_OWNER_API_KEY || '';
+
 const statusMeta: Record<TaskStatus, { label: string; className: string }> = {
   TO_DO: { label: 'To do', className: 'todo' },
   IN_PROGRESS: { label: 'In progress', className: 'progress' },
@@ -75,10 +84,25 @@ export default function Home() {
     if (!('serviceWorker' in navigator)) return;
     void navigator.serviceWorker.register('/clocker-sw.js').then((registration) => {
       serviceWorkerRegistrationRef.current = registration;
+      void registration.update();
     }).catch(() => {
       serviceWorkerRegistrationRef.current = null;
     });
   }, []);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    async function handleServiceWorkerMessage(event: MessageEvent) {
+      if (event.data?.type !== 'CLOCKER_TIMER_STOPPED') return;
+      setToast('Timer dihentikan dari notifikasi.');
+      await refreshAll();
+      if (selectedTask?.id) await refreshTask(selectedTask.id);
+    }
+
+    navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+  }, [selectedTask?.id]);
 
   useEffect(() => {
     if (!activeTimer || notificationPermission !== 'granted') {
@@ -177,18 +201,34 @@ export default function Home() {
     if (!timer || !('Notification' in window) || Notification.permission !== 'granted') return;
 
     timerNotificationRef.current?.close();
-    const options: NotificationOptions = {
-      body: `${timer.task.title} / ${timer.task.project.name} / ${revisionLabel(timer.revisionNumber)}`,
+    const revision = revisionLabel(timer.revisionNumber);
+    const options: TimerNotificationOptions = {
+      body: `${timer.task.project.name} / ${revision}`,
       tag: 'clocker-active-timer',
+      badge: '/notification-badge.svg',
+      icon: '/notification-icon.svg',
       requireInteraction: true,
-      data: { url: window.location.href },
+      timestamp: Date.now(),
+      vibrate: [80, 50, 80],
+      actions: [
+        { action: 'open', title: 'Buka' },
+        { action: 'stop', title: 'Stop' },
+      ],
+      data: {
+        apiUrl: publicApiUrl,
+        ownerApiKey: publicOwnerApiKey,
+        projectName: timer.task.project.name,
+        revision,
+        taskTitle: timer.task.title,
+        url: window.location.href,
+      },
     };
 
     try {
       const registration = serviceWorkerRegistrationRef.current ?? ('serviceWorker' in navigator ? await navigator.serviceWorker.ready : null);
       if (registration) {
         serviceWorkerRegistrationRef.current = registration;
-        await registration.showNotification('Clocker timer masih berjalan', options);
+        await registration.showNotification(`Timer aktif: ${timer.task.title}`, options);
         return;
       }
     } catch {
@@ -196,7 +236,7 @@ export default function Home() {
     }
 
     try {
-      const notification = new Notification('Clocker timer masih berjalan', options);
+      const notification = new Notification(`Timer aktif: ${timer.task.title}`, options);
       notification.onclick = () => {
         window.focus();
         notification.close();
